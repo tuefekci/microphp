@@ -1,9 +1,19 @@
-use crate::parser::{Statement, Expression};
+use crate::parser::{Statement, Expression, Op};
 use crate::object::Object;
-use std::slice::Iter;
 pub use code::Code;
 
 mod code;
+
+macro_rules! binary_op {
+    ($lhs:expr, $op:expr, $rhs:expr) => {
+        match $op {
+            Op::Add => $lhs + $rhs,
+            Op::Subtract => $lhs - $rhs,
+            Op::Multiply => $lhs * $rhs,
+            Op::Divide => $lhs / $rhs,
+        }
+    };
+}
 
 struct Compiler {
     constants: Vec<Object>,
@@ -25,6 +35,46 @@ impl Compiler {
         match expression {
             Expression::String(s) => {
                 self.constant(Object::String(s))
+            },
+            Expression::Integer(i) => {
+                self.constant(Object::Integer(i))
+            },
+            Expression::Float(f) => {
+                self.constant(Object::Float(f))
+            },
+            Expression::Infix(lhs, op, rhs) => {
+                let lhs = *lhs;
+                let rhs = *rhs;
+
+                match (lhs.clone(), rhs.clone()) {
+                    (Expression::Integer(l), Expression::Integer(r)) => {
+                        if op == Op::Divide {
+                            self.constant(Object::Float(binary_op!(l as f64, op, r as f64)))
+                        } else {
+                            self.constant(Object::Integer(binary_op!(l, op, r)))
+                        }
+                    },
+                    (Expression::Float(l), Expression::Integer(r)) => {
+                        self.constant(Object::Float(binary_op!(l, op, r as f64)))
+                    },
+                    (Expression::Integer(l), Expression::Float(r)) => {
+                        self.constant(Object::Float(binary_op!(l as f64, op, r)))
+                    },
+                    (Expression::Float(l), Expression::Float(r)) => {
+                        self.constant(Object::Float(binary_op!(l, op, r)))
+                    },
+                    _ => {
+                        self.expression(lhs);
+                        self.expression(rhs);
+
+                        match op {
+                            Op::Add => self.emit(Code::Add),
+                            Op::Subtract => self.emit(Code::Subtract),
+                            Op::Multiply => self.emit(Code::Multiply),
+                            Op::Divide => self.emit(Code::Divide),
+                        }
+                    },
+                }
             },
             _ => todo!("{:?}", expression)
         }

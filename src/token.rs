@@ -6,8 +6,13 @@ pub enum Token<'t> {
     Variable(&'t str),
     #[regex(r"[a-zA-Z_]+")]
     Identifier,
+
     #[regex(r##""(?:[^"\\]|\\.)*""##)]
     String(&'t str),
+    #[regex(r"[0-9]+", |l| l.slice().parse())]
+    Integer(i64),
+    #[regex(r"[0-9]+\.[0-9]+", |l| l.slice().parse())]
+    Float(f64),
 
     #[token("<?php")]
     OpenTag,
@@ -19,6 +24,14 @@ pub enum Token<'t> {
 
     #[token(";")]
     SemiColon,
+    #[token("+")]
+    Plus,
+    #[token("-")]
+    Minus,
+    #[token("*")]
+    Multiply,
+    #[token("/")]
+    Divide,
 
     Eof,
 

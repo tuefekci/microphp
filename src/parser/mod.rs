@@ -6,9 +6,12 @@ pub enum Statement {
     Echo(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     String(String),
+    Integer(i64),
+    Float(f64),
+    Infix(Box<Expression>, Op, Box<Expression>),
 }
 
 struct Parser<'p> {
@@ -36,7 +39,7 @@ impl<'p> Parser<'p> {
     }
 
     fn expression(&mut self, bp: u8) -> Expression {
-        match self.current {
+        let mut lhs = match self.current {
             Token::String(s) => {
                 self.read();
 
@@ -46,8 +49,44 @@ impl<'p> Parser<'p> {
 
                 Expression::String(string)
             },
+            Token::Integer(i) => {
+                self.read();
+
+                Expression::Integer(i)
+            },
+            Token::Float(f) => {
+                self.read();
+
+                Expression::Float(f)
+            }
             _ => todo!()
+        };
+
+        loop {
+            if self.current == Token::Eof || self.current == Token::SemiColon {
+                break;
+            }
+
+            if let Some((lbp, rbp)) = infix_binding_power(&self.current) {
+                if lbp < bp {
+                    break;
+                }
+
+                let op = self.current.clone();
+
+                self.read();
+
+                let rhs = self.expression(rbp);
+
+                lhs = infix(lhs, &op, rhs);
+
+                continue;
+            }
+
+            break;
         }
+
+        lhs
     }
 
     fn read(&mut self) {
@@ -74,6 +113,32 @@ impl<'p> Parser<'p> {
 
         Some(self.statement())
     }
+}
+
+fn infix_binding_power(token: &Token) -> Option<(u8, u8)> {
+    Some(match token {
+        Token::Multiply | Token::Divide => (13, 14),
+        Token::Plus | Token::Minus => (11, 12),
+        _ => return None
+    })
+}
+
+fn infix(lhs: Expression, op: &Token, rhs: Expression) -> Expression {
+    Expression::Infix(Box::new(lhs), match op {
+        Token::Plus => Op::Add,
+        Token::Minus => Op::Subtract,
+        Token::Multiply => Op::Multiply,
+        Token::Divide => Op::Divide,
+        _ => todo!("infix op: {:?}", op),
+    }, Box::new(rhs))
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Op {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {

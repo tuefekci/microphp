@@ -29,7 +29,49 @@ impl Machine {
                     print!("{}", value);
 
                     ip += 1;
-                }
+                },
+                Code::Add | Code::Subtract | Code::Divide | Code::Multiply => {
+                    dbg!(op, &self.stack);
+                    
+                    let rhs = self.stack.pop().unwrap();
+                    let lhs = self.stack.pop().unwrap();
+
+                    self.stack.push(match op {
+                        Code::Add => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::Integer(l + r),
+                            (Object::Float(l), Object::Integer(r)) => Object::Float(l + r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::Float(l as f64 + r),
+                            (Object::Float(l), Object::Float(r)) => Object::Float(l + r),
+                            _ => unreachable!()
+                        },
+                        Code::Subtract => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::Integer(l - r),
+                            (Object::Float(l), Object::Integer(r)) => Object::Float(l - r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::Float(l as f64 - r),
+                            (Object::Float(l), Object::Float(r)) => Object::Float(l - r),
+                            _ => unreachable!()
+                        },
+                        Code::Multiply => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::Integer(l * r),
+                            (Object::Float(l), Object::Integer(r)) => Object::Float(l * r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::Float(l as f64 * r),
+                            (Object::Float(l), Object::Float(r)) => Object::Float(l * r),
+                            _ => unreachable!()
+                        },
+                        Code::Divide => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::Float(l as f64 / r as f64),
+                            (Object::Float(l), Object::Integer(r)) => Object::Float(l / r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::Float(l as f64 / r),
+                            (Object::Float(l), Object::Float(r)) => Object::Float(l / r),
+                            _ => unreachable!()
+                        },
+                        _ => todo!("{:?}", op),
+                    });
+
+                    dbg!(op, &self.stack);
+
+                    ip += 1;
+                },
                 _ => todo!("{:?}", op)
             }
         }
