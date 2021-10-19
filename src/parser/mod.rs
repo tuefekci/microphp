@@ -2,12 +2,6 @@ use crate::token::Token;
 use std::slice::Iter;
 
 #[derive(Debug)]
-pub enum Node {
-    Statement(Statement),
-    Expression(Expression),
-}
-
-#[derive(Debug)]
 pub enum Statement {
     Echo(Expression),
 }
@@ -24,11 +18,11 @@ struct Parser<'p> {
 }
 
 impl<'p> Parser<'p> {
-    fn statement(&mut self) -> Node {
-        Node::Statement(match self.current {
+    fn statement(&mut self) -> Statement {
+        match self.current {
             Token::Echo => self.echo(),
             _ => todo!("{:?}", self.current)
-        })
+        }
     }
 
     fn echo(&mut self) -> Statement {
@@ -73,7 +67,7 @@ impl<'p> Parser<'p> {
         self.read();
     }
 
-    fn next(&mut self) -> Option<Node> {
+    fn next(&mut self) -> Option<Statement> {
         if self.current == Token::Eof {
             return None
         }
@@ -82,7 +76,7 @@ impl<'p> Parser<'p> {
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Vec<Node> {
+pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
     match tokens.first() {
         Some(Token::OpenTag) => (),
         _ => {

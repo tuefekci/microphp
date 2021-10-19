@@ -3,6 +3,9 @@ use std::env::args;
 mod cmd;
 mod token;
 mod parser;
+mod compiler;
+mod vm;
+mod object;
 
 fn main() {
     if args().len() <= 1 {
@@ -27,6 +30,7 @@ fn main() {
 
     let tokens = token::generate(&contents);
     let ast = parser::parse(tokens);
+    let (constants, code) = compiler::compile(ast);
     
-    dbg!(ast);
+    dbg!(constants, code);
 }
