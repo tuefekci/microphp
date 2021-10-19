@@ -1,7 +1,7 @@
 use crate::parser::{Statement, Expression};
 use crate::object::Object;
 use std::slice::Iter;
-use code::Code;
+pub use code::Code;
 
 mod code;
 

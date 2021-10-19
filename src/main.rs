@@ -32,5 +32,5 @@ fn main() {
     let ast = parser::parse(tokens);
     let (constants, code) = compiler::compile(ast);
     
-    dbg!(constants, code);
+    vm::run(constants, code);
 }
