@@ -1,6 +1,6 @@
 use logos::Logos;
 
-#[derive(Debug, Logos)]
+#[derive(Debug, Logos, PartialEq, Clone)]
 pub enum Token<'t> {
     #[regex(r"\$[a-zA-Z_]+")]
     Variable(&'t str),
@@ -19,6 +19,8 @@ pub enum Token<'t> {
 
     #[token(";")]
     SemiColon,
+
+    Eof,
 
     #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]

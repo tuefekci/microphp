@@ -2,6 +2,7 @@ use std::env::args;
 
 mod cmd;
 mod token;
+mod parser;
 
 fn main() {
     if args().len() <= 1 {
@@ -25,6 +26,7 @@ fn main() {
     };
 
     let tokens = token::generate(&contents);
-
-    dbg!(tokens);
+    let ast = parser::parse(tokens);
+    
+    dbg!(ast);
 }
