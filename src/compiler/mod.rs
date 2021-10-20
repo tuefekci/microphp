@@ -27,6 +27,33 @@ impl Compiler {
                 self.expression(expression);
                 self.emit(Code::Echo);
             },
+            Statement::IfElse(condition, then, otherwise) => {
+                self.expression(condition);
+
+                let jump_if_not_position = self.emit(Code::JumpIfFalse(usize::MAX));
+
+                for statement in then {
+                    self.compile(statement);
+                }
+
+                if otherwise.is_empty() {
+                    let after_then_position = self.instructions.len();
+
+                    self.replace(jump_if_not_position, Code::JumpIfFalse(after_then_position));
+                } else {
+                    let jump_position = self.emit(Code::Jump(usize::MAX));
+
+                    let after_then_position = self.instructions.len();
+                    self.replace(jump_if_not_position, Code::JumpIfFalse(after_then_position));
+
+                    for statement in otherwise {
+                        self.compile(statement);
+                    }
+
+                    let after_otherwise_position = self.instructions.len();
+                    self.replace(jump_position, Code::Jump(after_otherwise_position));
+                }
+            },
             Statement::Expression(expression) => {
                 self.expression(expression);
                 self.emit(Code::Pop);
@@ -37,17 +64,23 @@ impl Compiler {
 
     fn expression(&mut self, expression: Expression) {
         match expression {
+            Expression::True => {
+                self.emit(Code::True);
+            },
+            Expression::False => {
+                self.emit(Code::False);
+            },
             Expression::String(s) => {
-                self.constant(Object::String(s))
+                self.constant(Object::String(s));
             },
             Expression::Integer(i) => {
-                self.constant(Object::Integer(i))
+                self.constant(Object::Integer(i));
             },
             Expression::Float(f) => {
-                self.constant(Object::Float(f))
+                self.constant(Object::Float(f));
             },
             Expression::Variable(v) => {
-                self.emit(Code::Get(v))
+                self.emit(Code::Get(v));
             },
             Expression::Infix(lhs, op, rhs) => {
                 let lhs = *lhs;
@@ -79,9 +112,9 @@ impl Compiler {
                             Op::Subtract => self.emit(Code::Subtract),
                             Op::Multiply => self.emit(Code::Multiply),
                             Op::Divide => self.emit(Code::Divide),
-                        }
+                        };
                     },
-                }
+                };
             },
             Expression::Assign(target, value) => {
                 self.expression(*value);
@@ -95,13 +128,18 @@ impl Compiler {
         }
     }
 
-    fn emit(&mut self, code: Code) {
+    fn emit(&mut self, code: Code) -> usize {
         self.instructions.push(code);
+        self.instructions.len() - 1
+    }
+
+    fn replace(&mut self, position: usize, code: Code) {
+        self.instructions[position] = code
     }
 
     fn constant(&mut self, object: Object) {
         self.constants.push(object);
-        self.emit(Code::Constant(self.constants.len() - 1))
+        self.emit(Code::Constant(self.constants.len() - 1));
     }
 }
 

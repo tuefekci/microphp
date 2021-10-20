@@ -8,5 +8,9 @@ pub enum Code {
     Divide,
     Assign(String),
     Get(String),
+    Jump(usize),
+    JumpIfFalse(usize),
     Pop,
+    True,
+    False,
 }

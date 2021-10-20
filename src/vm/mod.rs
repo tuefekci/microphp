@@ -25,6 +25,26 @@ impl Machine {
 
                     ip += 1;
                 },
+                Code::True => {
+                    self.stack.push(Object::True);
+                    ip += 1;
+                },
+                Code::False => {
+                    self.stack.push(Object::False);
+                    ip += 1;
+                },
+                Code::Jump(position) => {
+                    ip = *position
+                },
+                Code::JumpIfFalse(position) => {
+                    let value = self.stack.pop().unwrap();
+
+                    if ! value.to_bool() {
+                        ip = *position
+                    } else {
+                        ip += 1;
+                    }
+                },
                 Code::Echo => {
                     let value = self.stack.pop().unwrap();
 

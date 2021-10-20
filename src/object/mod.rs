@@ -5,6 +5,21 @@ pub enum Object {
     String(String),
     Integer(i64),
     Float(f64),
+    True,
+    False,
+}
+
+impl Object {
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Object::True => true,
+            Object::False => false,
+            Object::Float(f) => f > &0.0,
+            Object::Integer(i) => i > &0,
+            Object::String(s) => ! s.is_empty(),
+            _ => todo!("to_bool: {:?}", self),
+        }
+    }
 }
 
 impl Display for Object {

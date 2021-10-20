@@ -7,6 +7,15 @@ pub enum Token<'t> {
     #[regex(r"[a-zA-Z_]+")]
     Identifier,
 
+    #[token("if")]
+    If,
+    #[token("else")]
+    Else,
+    #[token("true")]
+    True,
+    #[token("false")]
+    False,
+
     #[regex(r##""(?:[^"\\]|\\.)*""##)]
     String(&'t str),
     #[regex(r"[0-9]+", |l| l.slice().parse())]
@@ -34,6 +43,14 @@ pub enum Token<'t> {
     Divide,
     #[token("=")]
     Assign,
+    #[token("(")]
+    LeftParen,
+    #[token(")")]
+    RightParen,
+    #[token("{")]
+    LeftBrace,
+    #[token("}")]
+    RightBrace,
 
     Eof,
 

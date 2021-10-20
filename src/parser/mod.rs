@@ -5,6 +5,7 @@ use std::slice::Iter;
 pub enum Statement {
     Echo(Expression),
     Expression(Expression),
+    IfElse(Expression, Vec<Statement>, Vec<Statement>)
 }
 
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub enum Expression {
     String(String),
     Integer(i64),
     Float(f64),
+    True,
+    False,
     Infix(Box<Expression>, Op, Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
     Variable(String),
@@ -27,6 +30,7 @@ impl<'p> Parser<'p> {
     fn statement(&mut self) -> Statement {
         match self.current {
             Token::Echo => self.echo(),
+            Token::If => self.r#if(),
             _ => {
                 let expression = self.expression(0);
 
@@ -47,8 +51,52 @@ impl<'p> Parser<'p> {
         Statement::Echo(expression)
     }
 
+    fn r#if(&mut self) -> Statement {
+        self.read();
+
+        self.expect(Token::LeftParen);
+        let condition = self.expression(0);
+        self.expect(Token::RightParen);
+
+        let then = self.block();
+
+        let mut otherwise = Vec::new();
+
+        if self.current == Token::Else {
+            self.read();
+
+            otherwise = self.block();
+        }
+
+        Statement::IfElse(condition, then, otherwise)
+    }
+
+    fn block(&mut self) -> Vec<Statement> {
+        self.expect(Token::LeftBrace);
+
+        let mut block = Vec::new();
+
+        while self.current != Token::RightBrace {
+            block.push(self.statement());
+        }
+
+        self.expect(Token::RightBrace);
+
+        block
+    }
+
     fn expression(&mut self, bp: u8) -> Expression {
         let mut lhs = match self.current {
+            Token::True => {
+                self.read();
+
+                Expression::True
+            },
+            Token::False => {
+                self.read();
+
+                Expression::False
+            },
             Token::String(s) => {
                 self.read();
 
