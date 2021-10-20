@@ -10,6 +10,13 @@ pub enum Object {
 }
 
 impl Object {
+    pub fn from_bool(b: bool) -> Self {
+        match b {
+            true => Self::True,
+            false => Self::False
+        }
+    }
+    
     pub fn to_bool(&self) -> bool {
         match self {
             Object::True => true,

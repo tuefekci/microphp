@@ -45,6 +45,15 @@ impl Machine {
                         ip += 1;
                     }
                 },
+                Code::JumpIfTrue(position) => {
+                    let value = self.stack.pop().unwrap();
+
+                    if value.to_bool() {
+                        ip = *position;
+                    } else {
+                        ip += 1;
+                    }
+                }
                 Code::Echo => {
                     let value = self.stack.pop().unwrap();
 
@@ -72,7 +81,8 @@ impl Machine {
 
                     ip += 1;
                 },
-                Code::Add | Code::Subtract | Code::Divide | Code::Multiply => {
+                Code::Add | Code::Subtract | Code::Divide | Code::Multiply |
+                Code::LessThan | Code::GreaterThan => {
                     let rhs = self.stack.pop().unwrap();
                     let lhs = self.stack.pop().unwrap();
 
@@ -103,6 +113,20 @@ impl Machine {
                             (Object::Float(l), Object::Integer(r)) => Object::Float(l / r as f64),
                             (Object::Integer(l), Object::Float(r)) => Object::Float(l as f64 / r),
                             (Object::Float(l), Object::Float(r)) => Object::Float(l / r),
+                            _ => unreachable!()
+                        },
+                        Code::GreaterThan => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::from_bool(l > r),
+                            (Object::Float(l), Object::Integer(r)) => Object::from_bool(l > r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::from_bool(l as f64 > r),
+                            (Object::Float(l), Object::Float(r)) => Object::from_bool(l > r),
+                            _ => unreachable!()
+                        },
+                        Code::LessThan => match (lhs, rhs) {
+                            (Object::Integer(l), Object::Integer(r)) => Object::from_bool(l < r),
+                            (Object::Float(l), Object::Integer(r)) => Object::from_bool(l < r as f64),
+                            (Object::Integer(l), Object::Float(r)) => Object::from_bool((l as f64) < r),
+                            (Object::Float(l), Object::Float(r)) => Object::from_bool(l < r),
                             _ => unreachable!()
                         },
                         _ => todo!("{:?}", op),

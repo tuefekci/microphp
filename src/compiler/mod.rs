@@ -11,6 +11,7 @@ macro_rules! binary_op {
             Op::Subtract => $lhs - $rhs,
             Op::Multiply => $lhs * $rhs,
             Op::Divide => $lhs / $rhs,
+            _ => todo!()
         }
     };
 }
@@ -54,6 +55,21 @@ impl Compiler {
                     self.replace(jump_position, Code::Jump(after_otherwise_position));
                 }
             },
+            Statement::While(condition, then) => {
+                let condition_jump_position = self.emit(Code::Jump(usize::MAX));
+                let then_start_position = self.instructions.len();
+
+                for statement in then {
+                    self.compile(statement);
+                }
+
+                let condition_position = self.instructions.len();
+
+                self.expression(condition);
+
+                self.emit(Code::JumpIfTrue(then_start_position));
+                self.replace(condition_jump_position, Code::Jump(condition_position));
+            },
             Statement::Expression(expression) => {
                 self.expression(expression);
                 self.emit(Code::Pop);
@@ -86,34 +102,49 @@ impl Compiler {
                 let lhs = *lhs;
                 let rhs = *rhs;
 
-                match (lhs.clone(), rhs.clone()) {
-                    (Expression::Integer(l), Expression::Integer(r)) => {
-                        if op == Op::Divide {
-                            self.constant(Object::Float(binary_op!(l as f64, op, r as f64)))
-                        } else {
-                            self.constant(Object::Integer(binary_op!(l, op, r)))
-                        }
-                    },
-                    (Expression::Float(l), Expression::Integer(r)) => {
-                        self.constant(Object::Float(binary_op!(l, op, r as f64)))
-                    },
-                    (Expression::Integer(l), Expression::Float(r)) => {
-                        self.constant(Object::Float(binary_op!(l as f64, op, r)))
-                    },
-                    (Expression::Float(l), Expression::Float(r)) => {
-                        self.constant(Object::Float(binary_op!(l, op, r)))
-                    },
-                    _ => {
+                match op {
+                    Op::LessThan | Op::GreaterThan => {
                         self.expression(lhs);
                         self.expression(rhs);
 
                         match op {
-                            Op::Add => self.emit(Code::Add),
-                            Op::Subtract => self.emit(Code::Subtract),
-                            Op::Multiply => self.emit(Code::Multiply),
-                            Op::Divide => self.emit(Code::Divide),
+                            Op::LessThan => self.emit(Code::LessThan),
+                            Op::GreaterThan => self.emit(Code::GreaterThan),
+                            _ => unreachable!()
                         };
                     },
+                    _ => {
+                        match (lhs.clone(), rhs.clone()) {
+                            (Expression::Integer(l), Expression::Integer(r)) => {
+                                if op == Op::Divide {
+                                    self.constant(Object::Float(binary_op!(l as f64, op, r as f64)))
+                                } else {
+                                    self.constant(Object::Integer(binary_op!(l, op, r)))
+                                }
+                            },
+                            (Expression::Float(l), Expression::Integer(r)) => {
+                                self.constant(Object::Float(binary_op!(l, op, r as f64)))
+                            },
+                            (Expression::Integer(l), Expression::Float(r)) => {
+                                self.constant(Object::Float(binary_op!(l as f64, op, r)))
+                            },
+                            (Expression::Float(l), Expression::Float(r)) => {
+                                self.constant(Object::Float(binary_op!(l, op, r)))
+                            },
+                            _ => {
+                                self.expression(lhs);
+                                self.expression(rhs);
+        
+                                match op {
+                                    Op::Add => self.emit(Code::Add),
+                                    Op::Subtract => self.emit(Code::Subtract),
+                                    Op::Multiply => self.emit(Code::Multiply),
+                                    Op::Divide => self.emit(Code::Divide),
+                                    _ => unreachable!()
+                                };
+                            },
+                        };
+                    }
                 };
             },
             Expression::Assign(target, value) => {

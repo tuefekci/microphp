@@ -11,6 +11,9 @@ pub enum Token<'t> {
     If,
     #[token("else")]
     Else,
+    #[token("while")]
+    While,
+
     #[token("true")]
     True,
     #[token("false")]
@@ -43,6 +46,10 @@ pub enum Token<'t> {
     Divide,
     #[token("=")]
     Assign,
+    #[token("<")]
+    LessThan,
+    #[token(">")]
+    GreaterThan,
     #[token("(")]
     LeftParen,
     #[token(")")]

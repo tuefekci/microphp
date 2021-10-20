@@ -5,7 +5,8 @@ use std::slice::Iter;
 pub enum Statement {
     Echo(Expression),
     Expression(Expression),
-    IfElse(Expression, Vec<Statement>, Vec<Statement>)
+    IfElse(Expression, Vec<Statement>, Vec<Statement>),
+    While(Expression, Vec<Statement>),
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,7 @@ impl<'p> Parser<'p> {
         match self.current {
             Token::Echo => self.echo(),
             Token::If => self.r#if(),
+            Token::While => self.r#while(),
             _ => {
                 let expression = self.expression(0);
 
@@ -69,6 +71,18 @@ impl<'p> Parser<'p> {
         }
 
         Statement::IfElse(condition, then, otherwise)
+    }
+
+    fn r#while(&mut self) -> Statement {
+        self.read();
+
+        self.expect(Token::LeftParen);
+        let condition = self.expression(0);
+        self.expect(Token::RightParen);
+
+        let then = self.block();
+
+        Statement::While(condition, then)
     }
 
     fn block(&mut self) -> Vec<Statement> {
@@ -181,6 +195,7 @@ fn infix_binding_power(token: &Token) -> Option<(u8, u8)> {
     Some(match token {
         Token::Multiply | Token::Divide => (13, 14),
         Token::Plus | Token::Minus => (11, 12),
+        Token::LessThan | Token::GreaterThan => (9, 10),
         Token::Assign => (2, 1),
         _ => return None
     })
@@ -198,6 +213,8 @@ fn infix(lhs: Expression, op: &Token, rhs: Expression) -> Expression {
                 Token::Minus => Op::Subtract,
                 Token::Multiply => Op::Multiply,
                 Token::Divide => Op::Divide,
+                Token::LessThan => Op::LessThan,
+                Token::GreaterThan => Op::GreaterThan,
                 _ => todo!("infix op: {:?}", op),
             }, rhs)
         }
@@ -210,6 +227,8 @@ pub enum Op {
     Subtract,
     Multiply,
     Divide,
+    LessThan,
+    GreaterThan,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
