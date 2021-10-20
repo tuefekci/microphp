@@ -13,6 +13,8 @@ pub enum Token<'t> {
     Else,
     #[token("while")]
     While,
+    #[token("break")]
+    Break,
 
     #[token("true")]
     True,

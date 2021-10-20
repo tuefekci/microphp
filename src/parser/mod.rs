@@ -7,6 +7,7 @@ pub enum Statement {
     Expression(Expression),
     IfElse(Expression, Vec<Statement>, Vec<Statement>),
     While(Expression, Vec<Statement>),
+    Break,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,12 @@ impl<'p> Parser<'p> {
             Token::Echo => self.echo(),
             Token::If => self.r#if(),
             Token::While => self.r#while(),
+            Token::Break => {
+                self.read();
+                self.semi();
+                
+                Statement::Break
+            },
             _ => {
                 let expression = self.expression(0);
 

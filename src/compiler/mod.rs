@@ -19,6 +19,8 @@ macro_rules! binary_op {
 struct Compiler {
     constants: Vec<Object>,
     instructions: Vec<Code>,
+    breakable_scope: bool,
+    breakable_positions: Vec<usize>,
 }
 
 impl Compiler {
@@ -55,20 +57,42 @@ impl Compiler {
                     self.replace(jump_position, Code::Jump(after_otherwise_position));
                 }
             },
+            Statement::Break => {
+                if ! self.breakable_scope {
+                    panic!("Invalid break scope.")
+                }
+
+                let position = self.emit(Code::Jump(usize::MAX));
+
+                self.breakable_positions.push(position);
+            },
             Statement::While(condition, then) => {
                 let condition_jump_position = self.emit(Code::Jump(usize::MAX));
                 let then_start_position = self.instructions.len();
 
+                self.breakable_scope = true;
+
                 for statement in then {
                     self.compile(statement);
                 }
+
+                self.breakable_scope = false;
 
                 let condition_position = self.instructions.len();
 
                 self.expression(condition);
 
                 self.emit(Code::JumpIfTrue(then_start_position));
+                
                 self.replace(condition_jump_position, Code::Jump(condition_position));
+
+                let after_position = self.instructions.len();
+
+                for break_position in self.breakable_positions.clone() {
+                    self.replace(break_position, Code::Jump(after_position));
+                }
+
+                self.breakable_positions = Vec::new();
             },
             Statement::Expression(expression) => {
                 self.expression(expression);
@@ -180,6 +204,8 @@ pub fn compile(ast: Vec<Statement>) -> (Vec<Object>, Vec<Code>) {
     let mut compiler = Compiler {
         constants: Vec::new(),
         instructions: Vec::new(),
+        breakable_scope: false,
+        breakable_positions: Vec::new(),
     };
 
     while let Some(node) = ast.next() {
