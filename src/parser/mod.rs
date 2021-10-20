@@ -4,6 +4,7 @@ use std::slice::Iter;
 #[derive(Debug)]
 pub enum Statement {
     Echo(Expression),
+    Expression(Expression),
 }
 
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub enum Expression {
     Integer(i64),
     Float(f64),
     Infix(Box<Expression>, Op, Box<Expression>),
+    Assign(Box<Expression>, Box<Expression>),
+    Variable(String),
 }
 
 struct Parser<'p> {
@@ -24,7 +27,13 @@ impl<'p> Parser<'p> {
     fn statement(&mut self) -> Statement {
         match self.current {
             Token::Echo => self.echo(),
-            _ => todo!("{:?}", self.current)
+            _ => {
+                let expression = self.expression(0);
+
+                self.semi();
+
+                Statement::Expression(expression)
+            }
         }
     }
 
@@ -58,8 +67,13 @@ impl<'p> Parser<'p> {
                 self.read();
 
                 Expression::Float(f)
-            }
-            _ => todo!()
+            },
+            Token::Variable(v) => {
+                self.read();
+
+                Expression::Variable(v.to_string())
+            },
+            _ => todo!("{:?}", self.current),
         };
 
         loop {
@@ -119,18 +133,27 @@ fn infix_binding_power(token: &Token) -> Option<(u8, u8)> {
     Some(match token {
         Token::Multiply | Token::Divide => (13, 14),
         Token::Plus | Token::Minus => (11, 12),
+        Token::Assign => (2, 1),
         _ => return None
     })
 }
 
 fn infix(lhs: Expression, op: &Token, rhs: Expression) -> Expression {
-    Expression::Infix(Box::new(lhs), match op {
-        Token::Plus => Op::Add,
-        Token::Minus => Op::Subtract,
-        Token::Multiply => Op::Multiply,
-        Token::Divide => Op::Divide,
-        _ => todo!("infix op: {:?}", op),
-    }, Box::new(rhs))
+    let lhs = Box::new(lhs);
+    let rhs = Box::new(rhs);
+
+    match op {
+        Token::Assign => Expression::Assign(lhs, rhs),
+        _ => {
+            Expression::Infix(lhs, match op {
+                Token::Plus => Op::Add,
+                Token::Minus => Op::Subtract,
+                Token::Multiply => Op::Multiply,
+                Token::Divide => Op::Divide,
+                _ => todo!("infix op: {:?}", op),
+            }, rhs)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

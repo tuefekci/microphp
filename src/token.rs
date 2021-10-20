@@ -32,6 +32,8 @@ pub enum Token<'t> {
     Multiply,
     #[token("/")]
     Divide,
+    #[token("=")]
+    Assign,
 
     Eof,
 

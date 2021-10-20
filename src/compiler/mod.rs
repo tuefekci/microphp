@@ -27,6 +27,10 @@ impl Compiler {
                 self.expression(expression);
                 self.emit(Code::Echo);
             },
+            Statement::Expression(expression) => {
+                self.expression(expression);
+                self.emit(Code::Pop);
+            },
             _ => todo!("{:?}", statement)
         }
     }
@@ -41,6 +45,9 @@ impl Compiler {
             },
             Expression::Float(f) => {
                 self.constant(Object::Float(f))
+            },
+            Expression::Variable(v) => {
+                self.emit(Code::Get(v))
             },
             Expression::Infix(lhs, op, rhs) => {
                 let lhs = *lhs;
@@ -75,6 +82,14 @@ impl Compiler {
                         }
                     },
                 }
+            },
+            Expression::Assign(target, value) => {
+                self.expression(*value);
+
+                match *target {
+                    Expression::Variable(v) => self.emit(Code::Assign(v)),
+                    _ => unreachable!("Assign to: {:?}", target),
+                };
             },
             _ => todo!("{:?}", expression)
         }

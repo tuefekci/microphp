@@ -6,4 +6,7 @@ pub enum Code {
     Subtract,
     Multiply,
     Divide,
+    Assign(String),
+    Get(String),
+    Pop,
 }

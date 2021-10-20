@@ -32,6 +32,7 @@ fn main() {
     let ast = parser::parse(tokens);
     let (constants, code) = compiler::compile(ast);
 
+    #[cfg(debug_assertions)]
     dbg!(&constants, &code);
     
     vm::run(constants, code);

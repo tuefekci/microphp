@@ -1,11 +1,13 @@
 use crate::object::Object;
 use crate::compiler::Code;
+use std::collections::HashMap;
 
 struct Machine {
     constants: Vec<Object>,
     instructions: Vec<Code>,
 
     stack: Vec<Object>,
+    globals: HashMap<String, Object>,
 }
 
 impl Machine {
@@ -30,9 +32,27 @@ impl Machine {
 
                     ip += 1;
                 },
+                Code::Pop => {
+                    self.stack.pop();
+
+                    ip += 1;
+                },
+                Code::Assign(v) => {
+                    let value = self.stack.pop().unwrap();
+
+                    self.globals.insert(v.to_string(), value.clone());
+                    self.stack.push(value);
+
+                    ip += 1;
+                },
+                Code::Get(v) => {
+                    let value = self.globals.get(v).unwrap().clone();
+
+                    self.stack.push(value);
+
+                    ip += 1;
+                },
                 Code::Add | Code::Subtract | Code::Divide | Code::Multiply => {
-                    dbg!(op, &self.stack);
-                    
                     let rhs = self.stack.pop().unwrap();
                     let lhs = self.stack.pop().unwrap();
 
@@ -68,8 +88,6 @@ impl Machine {
                         _ => todo!("{:?}", op),
                     });
 
-                    dbg!(op, &self.stack);
-
                     ip += 1;
                 },
                 _ => todo!("{:?}", op)
@@ -83,6 +101,7 @@ pub fn run(constants: Vec<Object>, instructions: Vec<Code>) {
         constants,
         instructions,
         stack: Vec::new(),
+        globals: HashMap::new(),
     };
 
     machine.run();
