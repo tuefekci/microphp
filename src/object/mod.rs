@@ -7,9 +7,14 @@ pub enum Object {
     Float(f64),
     True,
     False,
+    Null,
 }
 
 impl Object {
+    pub fn is_string(&self) -> bool {
+        matches!(self, Object::String(..))
+    }
+
     pub fn from_bool(b: bool) -> Self {
         match b {
             true => Self::True,
@@ -24,6 +29,7 @@ impl Object {
             Object::Float(f) => f > &0.0,
             Object::Integer(i) => i > &0,
             Object::String(s) => ! s.is_empty(),
+            Object::Null => false,
             _ => todo!("to_bool: {:?}", self),
         }
     }
@@ -35,6 +41,8 @@ impl Display for Object {
             Object::String(s) => s.to_string(),
             Object::Integer(i) => i.to_string(),
             Object::Float(f) => f.to_string(),
+            Object::Null | Object::False => "".to_string(),
+            Object::True => "1".to_string(),
             _ => todo!("Display: {:?}", self),
         })
     }

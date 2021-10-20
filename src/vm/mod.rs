@@ -1,92 +1,163 @@
 use crate::object::Object;
 use crate::compiler::Code;
+use crate::globals::{Globals, InternalFunction};
 use std::collections::HashMap;
 
-struct Machine {
-    constants: Vec<Object>,
+#[derive(Debug)]
+struct Frame {
+    ip: usize,
     instructions: Vec<Code>,
-
+    environment: HashMap<String, Object>,
     stack: Vec<Object>,
-    globals: HashMap<String, Object>,
+    internal: Option<InternalFunction>,
+}
+
+impl Frame {
+    fn new(instructions: Vec<Code>) -> Self {
+        Self {
+            ip: 0,
+            instructions,
+            environment: HashMap::new(),
+            stack: Vec::new(),
+            internal: None,
+        }
+    }
+
+    fn internal(internal: InternalFunction) -> Self {
+        Self {
+            ip: 0,
+            instructions: Vec::new(),
+            environment: HashMap::new(),
+            stack: Vec::new(),
+            internal: Some(internal),
+        }
+    }
+
+    fn set(&mut self, name: String, value: Object) {
+        self.environment.insert(name, value);
+    }
+
+    fn get(&mut self, name: &str) -> Option<&Object> {
+        self.environment.get(name)
+    }
+
+    fn push(&mut self, value: Object) {
+        self.stack.push(value);
+    }
+}
+
+pub struct Machine {
+    constants: Vec<Object>,
+    frames: Vec<Frame>,
+    buffer: Vec<Frame>,
+
+    pub globals: Globals,
 }
 
 impl Machine {
-    fn run(&mut self) {
-        let mut ip: usize = 0;
+    fn frame(&mut self) -> &mut Frame {
+        self.frames.last_mut().unwrap()
+    }
 
-        while ip < self.instructions.len() {
-            let op = self.instructions.get(ip).unwrap();
+    fn buffer(&mut self) -> &mut Frame {
+        self.buffer.last_mut().unwrap()
+    }
+
+    fn push(&mut self, value: Object) {
+        self.frame().stack.push(value)
+    }
+
+    fn pop(&mut self) -> Option<Object> {
+        self.frame().stack.pop()
+    }
+
+    fn next(&mut self) {
+        self.frame().ip += 1;
+    }
+
+    fn run(&mut self) {
+        while self.frame().ip < self.frame().instructions.len() {
+            let ip = self.frame().ip;
+            let op = self.frame().instructions.get(ip).unwrap().clone();
 
             match op {
                 Code::Constant(index) => {
-                    let value = self.constants.get(*index).unwrap().clone();
+                    let value = self.constants.get(index).unwrap().clone();
 
-                    self.stack.push(value);
+                    self.push(value);
 
-                    ip += 1;
+                    self.next();
                 },
                 Code::True => {
-                    self.stack.push(Object::True);
-                    ip += 1;
+                    self.push(Object::True);
+                    self.next();
                 },
                 Code::False => {
-                    self.stack.push(Object::False);
-                    ip += 1;
+                    self.push(Object::False);
+                    self.next();
                 },
                 Code::Jump(position) => {
-                    ip = *position
+                    self.frame().ip = position
                 },
                 Code::JumpIfFalse(position) => {
-                    let value = self.stack.pop().unwrap();
+                    let value = self.pop().unwrap();
 
                     if ! value.to_bool() {
-                        ip = *position
+                        self.frame().ip = position
                     } else {
-                        ip += 1;
+                        self.next();
                     }
                 },
                 Code::JumpIfTrue(position) => {
-                    let value = self.stack.pop().unwrap();
+                    let value = self.pop().unwrap();
 
                     if value.to_bool() {
-                        ip = *position;
+                        self.frame().ip = position;
                     } else {
-                        ip += 1;
+                        self.next();
                     }
                 }
                 Code::Echo => {
-                    let value = self.stack.pop().unwrap();
+                    let value = self.pop().unwrap();
 
                     print!("{}", value);
 
-                    ip += 1;
+                    self.next();
                 },
                 Code::Pop => {
-                    self.stack.pop();
+                    self.pop();
 
-                    ip += 1;
+                    self.next();
                 },
                 Code::Assign(v) => {
-                    let value = self.stack.pop().unwrap();
+                    let value = self.pop().unwrap();
 
-                    self.globals.insert(v.to_string(), value.clone());
-                    self.stack.push(value);
+                    self.frame().set(v.to_string(), value.clone());
+                    self.push(value);
 
-                    ip += 1;
+                    self.next();
                 },
                 Code::Get(v) => {
-                    let value = self.globals.get(v).unwrap().clone();
+                    let value = self.frame().get(&v).unwrap().clone();
 
-                    self.stack.push(value);
+                    self.push(value);
 
-                    ip += 1;
+                    self.next();
+                },
+                Code::GetConstant(c) => {
+                    match self.globals.get_constant(c.clone()) {
+                        Some(o) => self.push(o),
+                        _ => panic!("Undefined constant {}", c),
+                    };
+
+                    self.next();
                 },
                 Code::Add | Code::Subtract | Code::Divide | Code::Multiply |
-                Code::LessThan | Code::GreaterThan => {
-                    let rhs = self.stack.pop().unwrap();
-                    let lhs = self.stack.pop().unwrap();
+                Code::LessThan | Code::GreaterThan | Code::Concat => {
+                    let rhs = self.pop().unwrap();
+                    let lhs = self.pop().unwrap();
 
-                    self.stack.push(match op {
+                    self.push(match op {
                         Code::Add => match (lhs, rhs) {
                             (Object::Integer(l), Object::Integer(r)) => Object::Integer(l + r),
                             (Object::Float(l), Object::Integer(r)) => Object::Float(l + r as f64),
@@ -129,24 +200,91 @@ impl Machine {
                             (Object::Float(l), Object::Float(r)) => Object::from_bool(l < r),
                             _ => unreachable!()
                         },
+                        Code::Concat => {
+                            Object::String(format!("{}{}", lhs, rhs))
+                        },
                         _ => todo!("{:?}", op),
                     });
 
-                    ip += 1;
+                    self.next();
+                },
+                Code::InitCall(callable) => {
+                    let frame = if self.globals.is_user_function(&callable) {
+                        let instructions = self.globals.get_user_function(callable);
+                        Frame::new(instructions)
+                    } else {
+                        Frame::internal(self.globals.get_internal_function(&callable))
+                    };
+
+                    self.push_buffer(frame);
+                    self.next();
+                },
+                Code::DoUserCall => {
+                    let frame = self.pop_buffer();
+
+                    self.next();
+                    self.push_frame(frame);
+                },
+                Code::DoInternalCall => {
+                    let frame = self.pop_buffer();
+                    
+                    let internal = frame.internal.unwrap();
+                    let mut args = frame.stack;
+                    args.reverse();
+                    let callback = internal.callback;
+                    
+                    let result = callback(self, args);
+
+                    self.push(result);
+
+                    self.next();
+                },
+                Code::SendArg => {
+                    let value = self.pop().unwrap();
+
+                    self.buffer().push(value);
+                    self.next();
+                },
+                Code::Return => {            
+                    self.pop_frame();
+
+                    self.push(Object::Null);
+                },
+                Code::ReturnWith => {
+                    let value = self.pop().unwrap();
+
+                    self.pop_frame();
+
+                    self.push(value);
                 },
                 _ => todo!("{:?}", op)
             }
         }
     }
+
+    fn push_buffer(&mut self, frame: Frame) {
+        self.buffer.push(frame)
+    }
+
+    fn pop_buffer(&mut self) -> Frame {
+        self.buffer.pop().unwrap()
+    }
+
+    fn push_frame(&mut self, frame: Frame) {
+        self.frames.push(frame);
+    }
+
+    fn pop_frame(&mut self) -> Frame {
+        self.frames.pop().unwrap()
+    }
 }
 
-pub fn run(constants: Vec<Object>, instructions: Vec<Code>) {
-    let mut machine = Machine {
-        constants,
-        instructions,
-        stack: Vec::new(),
-        globals: HashMap::new(),
-    };
+pub fn run(constants: Vec<Object>, instructions: Vec<Code>, globals: Globals) {
+    let frames = vec![
+        Frame::new(instructions),
+    ];
+
+    let mut machine = Machine { constants, frames, buffer: Vec::new(), globals };
 
     machine.run();
 }

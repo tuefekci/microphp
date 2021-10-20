@@ -7,6 +7,8 @@ pub enum Statement {
     Expression(Expression),
     IfElse(Expression, Vec<Statement>, Vec<Statement>),
     While(Expression, Vec<Statement>),
+    Function(String, Vec<String>, Vec<Statement>),
+    Return(Option<Expression>),
     Break,
 }
 
@@ -19,7 +21,9 @@ pub enum Expression {
     False,
     Infix(Box<Expression>, Op, Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
+    Call(String, Vec<Expression>),
     Variable(String),
+    Identifier(String),
 }
 
 struct Parser<'p> {
@@ -34,6 +38,20 @@ impl<'p> Parser<'p> {
             Token::Echo => self.echo(),
             Token::If => self.r#if(),
             Token::While => self.r#while(),
+            Token::Function => self.function(),
+            Token::Return => {
+                self.read();
+
+                if self.current == Token::SemiColon {
+                    self.semi();
+                    
+                    Statement::Return(None)
+                } else {
+                    let expression = self.expression(0);
+                    self.semi();
+                    Statement::Return(Some(expression))
+                }
+            },
             Token::Break => {
                 self.read();
                 self.semi();
@@ -47,6 +65,49 @@ impl<'p> Parser<'p> {
 
                 Statement::Expression(expression)
             }
+        }
+    }
+
+    fn function(&mut self) -> Statement {
+        self.read();
+
+        let identifier = self.identifier();
+
+        self.expect(Token::LeftParen);
+        
+        let mut args = Vec::new();
+
+        while self.current != Token::RightParen {
+            args.push(match self.current {
+                Token::Variable(i) => {
+                    self.read();
+
+                    i.to_string()
+                },
+                Token::Comma => {
+                    self.read();
+                    continue;
+                },
+                _ => unreachable!()
+            });
+        }
+
+        // TODO: Add parameter parsing here.
+        self.expect(Token::RightParen);
+
+        let body = self.block();
+
+        Statement::Function(identifier, args, body)
+    }
+
+    fn identifier(&mut self) -> String {
+        match self.current {
+            Token::Identifier(i) => {
+                self.read();
+                
+                i.to_string()
+            },
+            _ => panic!("Expected identifier"),
         }
     }
 
@@ -142,12 +203,31 @@ impl<'p> Parser<'p> {
 
                 Expression::Variable(v.to_string())
             },
+            Token::Identifier(i) => {
+                self.read();
+
+                Expression::Identifier(i.to_string())
+            },
             _ => todo!("{:?}", self.current),
         };
 
         loop {
             if self.current == Token::Eof || self.current == Token::SemiColon {
                 break;
+            }
+
+            if let Some((lbp, _)) = postfix_binding_power(&self.current) {
+                if lbp < bp {
+                    break;
+                }
+
+                let op = self.current.clone();
+
+                self.read();
+
+                lhs = postfix(self, lhs, &op);
+
+                continue;
             }
 
             if let Some((lbp, rbp)) = infix_binding_power(&self.current) {
@@ -198,10 +278,44 @@ impl<'p> Parser<'p> {
     }
 }
 
+fn postfix_binding_power(token: &Token) -> Option<(u8, ())> {
+    Some(match token {
+        Token::LeftParen => (19, ()),
+        _ => return None
+    })
+}
+
+fn postfix(parser: &mut Parser, lhs: Expression, op: &Token) -> Expression {
+    match op {
+        Token::LeftParen => {
+            let name = match lhs {
+                Expression::Identifier(i) => i,
+                _ => unreachable!()
+            };
+
+            let mut args = Vec::new();
+
+            while parser.current != Token::RightParen {
+                args.push(parser.expression(0));
+
+                if parser.current == Token::Comma {
+                    parser.read()
+                }
+            }
+
+            parser.expect(Token::RightParen);
+
+            Expression::Call(name, args)
+        },
+        _ => todo!("postfix: {:?}", op),
+    }
+}
+
 fn infix_binding_power(token: &Token) -> Option<(u8, u8)> {
     Some(match token {
         Token::Multiply | Token::Divide => (13, 14),
         Token::Plus | Token::Minus => (11, 12),
+        Token::Dot => (11, 11),
         Token::LessThan | Token::GreaterThan => (9, 10),
         Token::Assign => (2, 1),
         _ => return None
@@ -222,6 +336,7 @@ fn infix(lhs: Expression, op: &Token, rhs: Expression) -> Expression {
                 Token::Divide => Op::Divide,
                 Token::LessThan => Op::LessThan,
                 Token::GreaterThan => Op::GreaterThan,
+                Token::Dot => Op::Concat,
                 _ => todo!("infix op: {:?}", op),
             }, rhs)
         }
@@ -236,6 +351,7 @@ pub enum Op {
     Divide,
     LessThan,
     GreaterThan,
+    Concat,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
@@ -251,7 +367,7 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
     tokens.next();
 
     let mut parser = Parser {
-        tokens: tokens,
+        tokens,
         current: Token::Eof,
         peek: Token::Eof,
     };

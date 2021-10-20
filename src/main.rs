@@ -6,6 +6,8 @@ mod parser;
 mod compiler;
 mod vm;
 mod object;
+mod globals;
+mod stdlib;
 
 fn main() {
     if args().len() <= 1 {
@@ -30,10 +32,10 @@ fn main() {
 
     let tokens = token::generate(&contents);
     let ast = parser::parse(tokens);
-    let (constants, code) = compiler::compile(ast);
+    let (constants, code, globals) = compiler::compile(ast);
 
     #[cfg(debug_assertions)]
-    dbg!(&constants, &code);
+    dbg!(&constants, &code, &globals);
     
-    vm::run(constants, code);
+    vm::run(constants, code, globals);
 }

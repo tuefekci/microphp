@@ -5,7 +5,7 @@ pub enum Token<'t> {
     #[regex(r"\$[a-zA-Z_]+")]
     Variable(&'t str),
     #[regex(r"[a-zA-Z_]+")]
-    Identifier,
+    Identifier(&'t str),
 
     #[token("if")]
     If,
@@ -15,6 +15,10 @@ pub enum Token<'t> {
     While,
     #[token("break")]
     Break,
+    #[token("function")]
+    Function,
+    #[token("return")]
+    Return,
 
     #[token("true")]
     True,
@@ -38,6 +42,10 @@ pub enum Token<'t> {
 
     #[token(";")]
     SemiColon,
+    #[token(".")]
+    Dot,
+    #[token(",")]
+    Comma,
     #[token("+")]
     Plus,
     #[token("-")]

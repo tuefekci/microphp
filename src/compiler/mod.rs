@@ -1,5 +1,6 @@
 use crate::parser::{Statement, Expression, Op};
 use crate::object::Object;
+use crate::globals::Globals;
 pub use code::Code;
 
 mod code;
@@ -16,9 +17,20 @@ macro_rules! binary_op {
     };
 }
 
+struct Scope {
+    instructions: Vec<Code>,
+}
+
+impl Scope {
+    fn new() -> Self {
+        Self { instructions: Vec::new() }
+    }
+}
+
 struct Compiler {
     constants: Vec<Object>,
-    instructions: Vec<Code>,
+    scopes: Vec<Scope>,
+    globals: Globals,
     breakable_scope: bool,
     breakable_positions: Vec<usize>,
 }
@@ -30,6 +42,39 @@ impl Compiler {
                 self.expression(expression);
                 self.emit(Code::Echo);
             },
+            Statement::Return(expression) => {
+                if let Some(e) = expression {
+                    self.expression(e);
+
+                    self.emit(Code::ReturnWith);
+                } else {
+                    self.emit(Code::Return);
+                }
+            },
+            Statement::Function(name, args, body) => {
+                // We do this now so that any recursive function calls are aware of the function,
+                // otherwise they'll try to do an internal function call.
+                // TODO: Swap internal decision logic around so that it defaults to a user function.
+                self.globals.create_user_function(name.clone(), Vec::new());
+                
+                self.enter_scope();
+
+                for arg in args {
+                    self.emit(Code::Assign(arg));
+                    self.emit(Code::Pop);
+                }
+
+                for statement in body {
+                    self.compile(statement);
+                }
+
+                self.constant(Object::Null);
+                self.emit(Code::Return);
+
+                let scope = self.leave_scope();
+
+                self.globals.create_user_function(name, scope.instructions);
+            },
             Statement::IfElse(condition, then, otherwise) => {
                 self.expression(condition);
 
@@ -40,20 +85,20 @@ impl Compiler {
                 }
 
                 if otherwise.is_empty() {
-                    let after_then_position = self.instructions.len();
+                    let after_then_position = self.len();
 
                     self.replace(jump_if_not_position, Code::JumpIfFalse(after_then_position));
                 } else {
                     let jump_position = self.emit(Code::Jump(usize::MAX));
 
-                    let after_then_position = self.instructions.len();
+                    let after_then_position = self.len();
                     self.replace(jump_if_not_position, Code::JumpIfFalse(after_then_position));
 
                     for statement in otherwise {
                         self.compile(statement);
                     }
 
-                    let after_otherwise_position = self.instructions.len();
+                    let after_otherwise_position = self.len();
                     self.replace(jump_position, Code::Jump(after_otherwise_position));
                 }
             },
@@ -68,7 +113,7 @@ impl Compiler {
             },
             Statement::While(condition, then) => {
                 let condition_jump_position = self.emit(Code::Jump(usize::MAX));
-                let then_start_position = self.instructions.len();
+                let then_start_position = self.len();
 
                 self.breakable_scope = true;
 
@@ -78,7 +123,7 @@ impl Compiler {
 
                 self.breakable_scope = false;
 
-                let condition_position = self.instructions.len();
+                let condition_position = self.len();
 
                 self.expression(condition);
 
@@ -86,7 +131,7 @@ impl Compiler {
                 
                 self.replace(condition_jump_position, Code::Jump(condition_position));
 
-                let after_position = self.instructions.len();
+                let after_position = self.len();
 
                 for break_position in self.breakable_positions.clone() {
                     self.replace(break_position, Code::Jump(after_position));
@@ -121,6 +166,9 @@ impl Compiler {
             },
             Expression::Variable(v) => {
                 self.emit(Code::Get(v));
+            },
+            Expression::Identifier(i) => {
+                self.emit(Code::GetConstant(i));
             },
             Expression::Infix(lhs, op, rhs) => {
                 let lhs = *lhs;
@@ -164,6 +212,7 @@ impl Compiler {
                                     Op::Subtract => self.emit(Code::Subtract),
                                     Op::Multiply => self.emit(Code::Multiply),
                                     Op::Divide => self.emit(Code::Divide),
+                                    Op::Concat => self.emit(Code::Concat),
                                     _ => unreachable!()
                                 };
                             },
@@ -179,38 +228,78 @@ impl Compiler {
                     _ => unreachable!("Assign to: {:?}", target),
                 };
             },
+            Expression::Call(callable, mut args) => {
+                self.emit(Code::InitCall(callable.clone()));
+
+                args.reverse();
+
+                for arg in args {
+                    self.expression(arg);
+                    self.emit(Code::SendArg);
+                }
+
+                if self.globals.is_user_function(callable) {
+                    self.emit(Code::DoUserCall);
+                } else {
+                    self.emit(Code::DoInternalCall);
+                }
+            },
             _ => todo!("{:?}", expression)
         }
     }
 
+    fn len(&mut self) -> usize {
+        self.scope().instructions.len()
+    }
+
     fn emit(&mut self, code: Code) -> usize {
-        self.instructions.push(code);
-        self.instructions.len() - 1
+        self.scope().instructions.push(code);
+        self.scope().instructions.len() - 1
     }
 
     fn replace(&mut self, position: usize, code: Code) {
-        self.instructions[position] = code
+        self.scope().instructions[position] = code
     }
 
     fn constant(&mut self, object: Object) {
         self.constants.push(object);
         self.emit(Code::Constant(self.constants.len() - 1));
     }
+
+    fn enter_scope(&mut self) {
+        self.scopes.push(Scope::new());
+    }
+
+    fn leave_scope(&mut self) -> Scope {
+        self.scopes.pop().unwrap()
+    }
+
+    fn scope(&mut self) -> &mut Scope {
+        self.scopes.last_mut().unwrap()
+    }
 }
 
-pub fn compile(ast: Vec<Statement>) -> (Vec<Object>, Vec<Code>) {
-    let mut ast = ast.into_iter();
+pub fn compile(ast: Vec<Statement>) -> (Vec<Object>, Vec<Code>, Globals) {
+    let ast = ast.into_iter();
+
+    let scopes = vec![
+        Scope::new(),
+    ];
 
     let mut compiler = Compiler {
         constants: Vec::new(),
-        instructions: Vec::new(),
+        scopes,
+        globals: Globals::new(),
         breakable_scope: false,
         breakable_positions: Vec::new(),
     };
 
-    while let Some(node) = ast.next() {
+    for node in ast {
         compiler.compile(node);
     }
 
-    (compiler.constants, compiler.instructions)
+    let constants = compiler.constants.clone();
+    let instructions = compiler.scope().instructions.clone();
+
+    (constants, instructions, compiler.globals)
 }
