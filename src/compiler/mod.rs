@@ -238,7 +238,7 @@ impl Compiler {
                     self.emit(Code::SendArg);
                 }
 
-                if self.globals.is_user_function(callable) {
+                if self.globals.is_user_function(&callable) {
                     self.emit(Code::DoUserCall);
                 } else {
                     self.emit(Code::DoInternalCall);
