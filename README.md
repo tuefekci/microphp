@@ -22,3 +22,4 @@ Both engines share similar opcodes making implementation of features much simple
 ## Optimisations
 
 * [ ] Use a `Vec<Value>` and store each variable against an index, instead of storing things in a `HashMap`.
+* [ ] Intern strings to reduce memory consumption.
