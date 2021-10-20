@@ -18,3 +18,7 @@ Both engines share similar opcodes making implementation of features much simple
 * While statements (along with `break`)
 * User-defined functions (no default parameter values or type declarations)
 * Internal / native functions
+
+## Optimisations
+
+* [ ] Use a `Vec<Value>` and store each variable against an index, instead of storing things in a `HashMap`.
