@@ -10,6 +10,7 @@ pub enum Code {
     LessThan,
     GreaterThan,
     Assign(String),
+    AssignToIndex,
     Get(String),
     GetConstant(String),
     Jump(usize),

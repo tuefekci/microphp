@@ -254,7 +254,14 @@ impl Compiler {
                 self.expression(*value);
 
                 match *target {
-                    Expression::Variable(v) => self.emit(Code::Assign(v)),
+                    Expression::Variable(v) => {
+                        self.emit(Code::Assign(v));
+                    },
+                    Expression::Index(target, index) => {
+                        self.expression(*target);
+                        self.expression(*index);
+                        self.emit(Code::AssignToIndex);
+                    },
                     _ => unreachable!("Assign to: {:?}", target),
                 };
             },

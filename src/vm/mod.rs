@@ -293,7 +293,16 @@ impl Machine {
                     };
 
                     self.next();
-                }
+                },
+                Code::AssignToIndex => {
+                    let index = self.pop().unwrap();
+                    let array = self.pop().unwrap();
+                    let value = self.pop().unwrap();
+
+                    array.to_hash().borrow_mut().insert(index.to_string(), value);
+
+                    self.next();
+                },
                 _ => todo!("{:?}", op)
             }
         }

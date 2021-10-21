@@ -2,10 +2,10 @@
 
 $array = [1, 2, 3];
 
-echo $array[1];
+echo count($array);
 
-$nested = [$array];
+$array[3] = "test";
 
-echo $nested[0][1];
+echo $array[3];
 
 echo count($array);
