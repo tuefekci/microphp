@@ -244,6 +244,19 @@ impl Compiler {
                     self.emit(Code::DoInternalCall);
                 }
             },
+            Expression::Array(items) => {
+                self.emit(Code::InitArray);
+
+                for item in items {
+                    self.expression(item);
+                    self.emit(Code::AddToArray);
+                }
+            },
+            Expression::Index(target, index) => {
+                self.expression(*target);
+                self.expression(*index);
+                self.emit(Code::GetArrayItem);
+            },
             _ => todo!("{:?}", expression)
         }
     }

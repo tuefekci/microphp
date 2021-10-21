@@ -25,6 +25,7 @@ pub enum Expression {
     Call(String, Vec<Expression>),
     Variable(String),
     Identifier(String),
+    Index(Box<Expression>, Box<Expression>),
 }
 
 struct Parser<'p> {
@@ -298,7 +299,7 @@ impl<'p> Parser<'p> {
 
 fn postfix_binding_power(token: &Token) -> Option<(u8, ())> {
     Some(match token {
-        Token::LeftParen => (19, ()),
+        Token::LeftParen | Token::LeftBracket => (19, ()),
         _ => return None
     })
 }
@@ -324,6 +325,13 @@ fn postfix(parser: &mut Parser, lhs: Expression, op: &Token) -> Expression {
             parser.expect(Token::RightParen);
 
             Expression::Call(name, args)
+        },
+        Token::LeftBracket => {
+            let index = parser.expression(0);
+
+            parser.expect(Token::RightBracket);
+
+            Expression::Index(Box::new(lhs), Box::new(index))
         },
         _ => todo!("postfix: {:?}", op),
     }

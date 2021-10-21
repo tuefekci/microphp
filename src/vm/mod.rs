@@ -1,4 +1,4 @@
-use crate::object::Object;
+use crate::object::{Object, new_array};
 use crate::compiler::Code;
 use crate::globals::{Globals, InternalFunction};
 use std::collections::HashMap;
@@ -257,6 +257,43 @@ impl Machine {
 
                     self.push(value);
                 },
+                Code::InitArray => {
+                    self.push(new_array());
+                    self.next();
+                },
+                Code::AddToArray => {
+                    let value = self.pop().unwrap();
+                    let array = self.pop();
+                    
+                    match array.clone() {
+                        Some(Object::Array(items)) => {
+                            let len = items.borrow().len();
+
+                            items.borrow_mut().insert(len.to_string(), value);
+                            
+                            self.push(array.unwrap());
+                        },
+                        _ => unreachable!()
+                    };
+
+                    self.next();
+                },
+                Code::GetArrayItem => {
+                    let index = self.pop().unwrap();
+                    let array = self.pop();
+
+                    match array {
+                        Some(Object::Array(items)) => {
+                            let hash = items.borrow();
+                            let value = hash.get(&index.to_string()).unwrap();
+
+                            self.push(value.clone());
+                        },
+                        _ => unreachable!()
+                    };
+
+                    self.next();
+                }
                 _ => todo!("{:?}", op)
             }
         }

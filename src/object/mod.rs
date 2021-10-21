@@ -1,4 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -8,6 +11,11 @@ pub enum Object {
     True,
     False,
     Null,
+    Array(Rc<RefCell<HashMap<String, Object>>>),
+}
+
+pub fn new_array() -> Object {
+    Object::Array(Rc::new(RefCell::new(HashMap::default())))
 }
 
 impl Object {
