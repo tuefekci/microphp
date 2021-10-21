@@ -6,7 +6,10 @@ pub enum Statement {
     Echo(Expression),
     Expression(Expression),
     IfElse(Expression, Vec<Statement>, Vec<Statement>),
+    // <test>, <body>
     While(Expression, Vec<Statement>),
+    // <init>, <test>, <increment>, <body>
+    For(Option<Expression>, Option<Expression>, Option<Expression>, Vec<Statement>),
     Function(String, Vec<String>, Vec<Statement>),
     Return(Option<Expression>),
     Break,
@@ -40,6 +43,7 @@ impl<'p> Parser<'p> {
             Token::Echo => self.echo(),
             Token::If => self.r#if(),
             Token::While => self.r#while(),
+            Token::For => self.r#for(),
             Token::Function => self.function(),
             Token::Return => {
                 self.read();
@@ -153,6 +157,50 @@ impl<'p> Parser<'p> {
         let then = self.block();
 
         Statement::While(condition, then)
+    }
+
+    fn r#for(&mut self) -> Statement {
+        self.read();
+
+        self.expect(Token::LeftParen);
+
+        let init = if self.current == Token::SemiColon {
+            self.semi();
+            
+            None
+        } else {
+            let expression = self.expression(0);
+            
+            self.semi();
+
+            Some(expression)
+        };
+
+        let test = if self.current == Token::SemiColon {
+            self.semi();
+
+            None
+        } else {
+            let expression = self.expression(0);
+            
+            self.semi();
+
+            Some(expression)
+        };
+
+        let increment = if self.current == Token::RightParen {
+            None
+        } else {
+            let expression = self.expression(0);
+
+            Some(expression)
+        };
+
+        self.expect(Token::RightParen);
+
+        let then = self.block();
+
+        Statement::For(init, test, increment, then)
     }
 
     fn block(&mut self) -> Vec<Statement> {

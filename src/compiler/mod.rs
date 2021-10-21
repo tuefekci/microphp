@@ -139,6 +139,36 @@ impl Compiler {
 
                 self.breakable_positions = Vec::new();
             },
+            Statement::For(init, test, increment, then) => {
+                // First we compile the initialiser if present.
+                if let Some(init) = init {
+                    self.expression(init);
+                }
+
+                // Keeping track of this since we'll need to come back and replace the
+                // `ip` to point to the location of the condition.
+                let condition_jump_position = self.emit(Code::Jump(usize::MAX));
+                let pre_then_position = self.len();
+                
+                for statement in then {
+                    self.compile(statement);
+                }
+
+                if let Some(increment) = increment {
+                    self.expression(increment);
+                }
+
+                let after_increment_position = self.len();
+
+                if let Some(test) = test {
+                    self.expression(test);
+                } else {
+                    self.emit(Code::True);
+                }
+                
+                self.emit(Code::JumpIfTrue(pre_then_position));
+                self.replace(condition_jump_position, Code::Jump(after_increment_position));
+            },
             Statement::Expression(expression) => {
                 self.expression(expression);
                 self.emit(Code::Pop);
