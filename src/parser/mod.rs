@@ -19,6 +19,7 @@ pub enum Expression {
     Float(f64),
     True,
     False,
+    Array(Vec<Expression>),
     Infix(Box<Expression>, Op, Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
     Call(String, Vec<Expression>),
@@ -207,6 +208,23 @@ impl<'p> Parser<'p> {
                 self.read();
 
                 Expression::Identifier(i.to_string())
+            },
+            Token::LeftBracket => {
+                self.read();
+
+                let mut items = Vec::new();
+
+                while self.current != Token::RightBracket {
+                    items.push(self.expression(0));
+
+                    if self.current == Token::Comma {
+                        self.read();
+                    }
+                }
+
+                self.expect(Token::RightBracket);
+
+                Expression::Array(items)
             },
             _ => todo!("{:?}", self.current),
         };

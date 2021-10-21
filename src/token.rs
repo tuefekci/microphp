@@ -68,6 +68,10 @@ pub enum Token<'t> {
     LeftBrace,
     #[token("}")]
     RightBrace,
+    #[token("[")]
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
 
     Eof,
 
