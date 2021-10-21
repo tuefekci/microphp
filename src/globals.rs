@@ -42,6 +42,9 @@ impl Globals {
         // Misc.
         s.create_internal_function("define", define);
 
+        // Arrays.
+        s.create_internal_function("count", count);
+
         s
     }
 

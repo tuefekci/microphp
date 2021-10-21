@@ -1,10 +1,12 @@
 mod types;
 mod fs;
 mod misc;
+mod array;
 
 pub use types::*;
 pub use fs::*;
 pub use misc::*;
+pub use array::*;
 
 macro_rules! arity {
     ($args:expr, $len:expr) => {

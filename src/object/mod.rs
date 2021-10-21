@@ -23,6 +23,10 @@ impl Object {
         matches!(self, Object::String(..))
     }
 
+    pub fn is_array(&self) -> bool {
+        matches!(self, Object::Array(..))
+    }
+
     pub fn from_bool(b: bool) -> Self {
         match b {
             true => Self::True,
@@ -39,6 +43,13 @@ impl Object {
             Object::String(s) => ! s.is_empty(),
             Object::Null => false,
             _ => todo!("to_bool: {:?}", self),
+        }
+    }
+
+    pub fn to_hash(&self) -> &Rc<RefCell<HashMap<String, Object>>> {
+        match self {
+            Object::Array(items) => items,
+            _ => unreachable!()
         }
     }
 }

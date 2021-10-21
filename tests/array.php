@@ -7,3 +7,5 @@ echo $array[1];
 $nested = [$array];
 
 echo $nested[0][1];
+
+echo count($array);
