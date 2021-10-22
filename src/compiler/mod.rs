@@ -38,6 +38,10 @@ struct Compiler {
 impl Compiler {
     fn compile(&mut self, statement: Statement) {
         match statement {
+            Statement::Const(name, expression) => {
+                self.expression(expression);
+                self.emit(Code::DeclareConst(name));
+            },
             Statement::Echo(expression) => {
                 self.expression(expression);
                 self.emit(Code::Echo);

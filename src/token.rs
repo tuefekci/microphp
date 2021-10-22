@@ -21,6 +21,8 @@ pub enum Token<'t> {
     Return,
     #[token("for")]
     For,
+    #[token("const")]
+    Const,
 
     #[token("true")]
     True,

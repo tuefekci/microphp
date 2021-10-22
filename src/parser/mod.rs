@@ -12,6 +12,7 @@ pub enum Statement {
     For(Option<Expression>, Option<Expression>, Option<Expression>, Vec<Statement>),
     Function(String, Vec<String>, Vec<Statement>),
     Return(Option<Expression>),
+    Const(String, Expression),
     Break,
 }
 
@@ -46,6 +47,19 @@ impl<'p> Parser<'p> {
             Token::While => self.r#while(),
             Token::For => self.r#for(),
             Token::Function => self.function(),
+            Token::Const => {
+                self.read();
+
+                let name = self.identifier();
+
+                self.expect(Token::Assign);
+
+                let value = self.expression(0);
+
+                self.semi();
+
+                Statement::Const(name, value)
+            },
             Token::Return => {
                 self.read();
 

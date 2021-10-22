@@ -307,6 +307,16 @@ impl Machine {
                     self.push(Object::Null);
                     self.next();
                 },
+                Code::DeclareConst(name) => {
+                    let value = self.pop().unwrap();
+
+                    if ! matches!(value, Object::True | Object::False | Object::String(_) | Object::Integer(_) | Object::Float(_) | Object::Array(_)) {
+                        panic!("Invalid constant type.");
+                    }
+
+                    self.globals.create_constant(name, value);
+                    self.next();
+                },
                 _ => todo!("{:?}", op)
             }
         }

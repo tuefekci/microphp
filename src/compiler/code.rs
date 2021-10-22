@@ -8,6 +8,7 @@ pub enum Code {
     Divide,
     Concat,
     LessThan,
+    DeclareConst(String),
     GreaterThan,
     Assign(String),
     AssignToIndex,
