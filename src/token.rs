@@ -26,6 +26,8 @@ pub enum Token<'t> {
     True,
     #[token("false")]
     False,
+    #[token("null")]
+    Null,
 
     #[regex(r##""(?:[^"\\]|\\.)*""##)]
     String(&'t str),

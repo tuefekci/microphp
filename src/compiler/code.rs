@@ -19,6 +19,7 @@ pub enum Code {
     Pop,
     True,
     False,
+    Null,
     Return,
     ReturnWith,
     InitArray,

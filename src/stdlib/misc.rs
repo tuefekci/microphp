@@ -14,3 +14,11 @@ pub fn define(vm: &mut Machine, mut args: Vec<Object>) -> Object {
     
     Object::True
 }
+
+pub fn var_dump(_: &mut Machine, mut args: Vec<Object>) -> Object {
+    for arg in args {
+        println!("{}", arg.dump());
+    }
+
+    Object::Null
+}

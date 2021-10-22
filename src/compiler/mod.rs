@@ -185,6 +185,9 @@ impl Compiler {
             Expression::False => {
                 self.emit(Code::False);
             },
+            Expression::Null => {
+                self.emit(Code::Null);
+            },
             Expression::String(s) => {
                 self.constant(Object::String(s));
             },

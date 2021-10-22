@@ -22,6 +22,7 @@ pub enum Expression {
     Float(f64),
     True,
     False,
+    Null,
     Array(Vec<Expression>),
     Infix(Box<Expression>, Op, Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
@@ -219,6 +220,11 @@ impl<'p> Parser<'p> {
 
     fn expression(&mut self, bp: u8) -> Expression {
         let mut lhs = match self.current {
+            Token::Null => {
+                self.read();
+
+                Expression::Null
+            }
             Token::True => {
                 self.read();
 

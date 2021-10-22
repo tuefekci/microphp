@@ -32,18 +32,25 @@ impl Globals {
             constants: HashMap::new(),
         };
 
+        macro_rules! internal {
+            ($name:ident) => {
+                s.create_internal_function(stringify!($name), $name)
+            };
+        }
+
         // Type conversions and checkers.
-        s.create_internal_function("is_string", is_string);
-        s.create_internal_function("strval", strval);
+        internal!(is_string);
+        internal!(strval);
 
         // Filesystem.
-        s.create_internal_function("basename", basename);
+        internal!(basename);
 
         // Misc.
-        s.create_internal_function("define", define);
+        internal!(define);
+        internal!(var_dump);
 
         // Arrays.
-        s.create_internal_function("count", count);
+        internal!(count);
 
         s
     }

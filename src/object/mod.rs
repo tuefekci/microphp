@@ -52,6 +52,31 @@ impl Object {
             _ => unreachable!()
         }
     }
+
+    pub fn dump(&self) -> String {
+        match self {
+            Object::Integer(i) => format!("int({})", i),
+            Object::Float(f) => format!("double({})", f),
+            Object::String(s) => format!("string({}) \"{}\"", s.len(), s),
+            Object::True => format!("bool(true)"),
+            Object::False => format!("bool(false)"),
+            Object::Null => format!("NULL"),
+            Object::Array(items) => {
+                let items = items.borrow();
+                let items = items.iter();
+                let mut buffer: String = format!("array({}) {{\n", items.len());
+                
+                // TODO: Output keys here too.
+                for (_, value) in items {
+                    buffer.push_str(&format!("  {}\n", value.dump()));
+                }
+
+                buffer.push_str("}");
+                buffer
+            },
+            _ => todo!()
+        }
+    }
 }
 
 impl Display for Object {

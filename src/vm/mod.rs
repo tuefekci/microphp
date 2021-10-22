@@ -303,6 +303,10 @@ impl Machine {
 
                     self.next();
                 },
+                Code::Null => {
+                    self.push(Object::Null);
+                    self.next();
+                },
                 _ => todo!("{:?}", op)
             }
         }
